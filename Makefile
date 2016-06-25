@@ -47,11 +47,12 @@ SOURCES = \
 SOURCES += $(ROCKET_SIM_PATCH_PATH)/src/malloc_count.cpp
 OBJECTS = $(patsubst %.cpp, %.o, $(SOURCES))
 
-TARGET_MALLOC = ltalloc
+TARGET_MALLOC ?= ltalloc
 
 ifeq ($(TARGET_MALLOC),ltalloc)
   SHARED_LIBS_SOURCE = $(ROCKET_SIM_PATCH_PATH)/src/ltalloc.cpp
   SHARED_LIBS =  $(patsubst %.cpp, %.so, $(SHARED_LIBS_SOURCE))
+  CXXFLAGS += -DLTALLOC
 else
 #Default is use glibc
   SHARED_LIBS_SOURCE =

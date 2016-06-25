@@ -157,7 +157,7 @@ extern void* malloc(size_t size)
     if (real_malloc)
     {
         /* call read malloc procedure in libc */
-#if 1
+#if 0
         struct timespec ts;
         clock_get_monotonic_time(&ts);
         fprintf(stderr,  "%lld.%ld,%lld,%lld,%lld\n",
@@ -328,31 +328,63 @@ extern void* realloc(void* ptr, size_t size)
     return (char*)newptr + alignment;
 }
 
-static __attribute__((constructor)) void init(void)
-{
+static void load_dynamic_lib() {
+    puts("Use dynamic library!");
+    
     char *error;
+    void *handle = dlopen("./patch_rocket_sim/src/ltalloc.so", RTLD_LAZY);
+    if ((error = dlerror()) != NULL) {
+        fprintf(stderr, "error %s\n", error);
+        exit(EXIT_FAILURE);
+    }
+    real_malloc = (malloc_type)dlsym(handle, "_Z8ltmallocm");
+    if ((error = dlerror()) != NULL) {
+        fprintf(stderr, "error %s\n", error);
+        exit(EXIT_FAILURE);
+    }
+    real_realloc = (realloc_type)dlsym(handle, "_Z9ltreallocPvm");
+    if ((error = dlerror()) != NULL) {
+        fprintf(stderr, "error %s\n", error);
+        exit(EXIT_FAILURE);
+    }
 
-    setlocale(LC_NUMERIC, ""); /* for better readable numbers */
+    real_free = (free_type)dlsym(handle, "_Z6ltfreePv");
+    if ((error = dlerror()) != NULL) {
+        fprintf(stderr, "error %s\n", error);
+        exit(EXIT_FAILURE);
+    }
+}
 
-    dlerror();
-    printf("%d:%s()\n",__LINE__,__FUNCTION__);
+static void load_glib() {
+    puts("Use glibc!");
+    
+    char *error;
     real_malloc = (malloc_type)dlsym(RTLD_NEXT, "malloc");
     if ((error = dlerror()) != NULL) {
-        fprintf(stderr,  PPREFIX "error %s\n", error);
+        fprintf(stderr, "error %s\n", error);
         exit(EXIT_FAILURE);
     }
 
     real_realloc = (realloc_type)dlsym(RTLD_NEXT, "realloc");
     if ((error = dlerror()) != NULL) {
-        fprintf(stderr,  PPREFIX "error %s\n", error);
+        fprintf(stderr, "error %s\n", error);
         exit(EXIT_FAILURE);
     }
 
     real_free = (free_type)dlsym(RTLD_NEXT, "free");
     if ((error = dlerror()) != NULL) {
-        fprintf(stderr,  PPREFIX "error %s\n", error);
+        fprintf(stderr, "error %s\n", error);
         exit(EXIT_FAILURE);
     }
+}
+
+static __attribute__((constructor)) void init(void)
+{
+#ifdef LTALLOC     
+    load_dynamic_lib();
+#else
+    load_glib();
+#endif
 }
 
 static __attribute__((destructor)) void finish(void)

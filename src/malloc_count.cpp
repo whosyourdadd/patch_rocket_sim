@@ -32,7 +32,7 @@
 #include <stdio.h>
 #include <locale.h>
 #include <dlfcn.h>
-
+#include "ringbuffer.h"
 #include "malloc_count.h"
 #include <new>
 
@@ -157,11 +157,11 @@ extern void* malloc(size_t size)
     if (real_malloc)
     {
         /* call read malloc procedure in libc */
-#if 0
-        struct timespec ts;
-        clock_get_monotonic_time(&ts);
-        fprintf(stderr,  "%lld.%ld,%lld,%lld,%lld\n",
-                (long long)ts.tv_sec, ts.tv_nsec/1000, total, peak, curr);
+#if 1
+            struct ringbuff_cell temp;
+            clock_get_monotonic_time(&temp.timestamp);
+            temp.curr_heap_size = curr;
+            enqueue(&temp);
 #endif
         ret = (*real_malloc)(alignment + size);
         inc_count(size);

@@ -1,18 +1,24 @@
 PROJECT = rocket-sim-exe
 ROCKET_SIM_PATCH_PATH :=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROCKET_SIM_PATH := $(abspath $(dir $(ROCKET_SIM_PATCH_PATH)))
+CC = gcc
+CXX = g++
 CXXFLAGS =-g \
 	  -I$(ROCKET_SIM_PATCH_PATH)/include\
 	  -I$(ROCKET_SIM_PATH)/include \
 	  -Wall -pipe \
 	  -O3 \
-	  -march=native -mtune=native
+	  -march=native -mtune=native \
+	  -pthread
 CXXFLAGS += -fmessage-length=0 \
 	    -fno-rtti -Wno-multichar \
 	    -fvisibility-inlines-hidden \
 	    -fno-stack-protector \
 	    -fno-asynchronous-unwind-tables
 # LDFLAGS = /usr/lib/libtcmalloc_minimal.so.4
+# CLIBS = -ldl
+# CFLAGS = -g -W -Wall -pthread
+# CFLAGS += -I$(ROCKET_SIM_PATCH_PATH)/include
 
 SOURCES = \
 	$(ROCKET_SIM_PATH)/src/execution.cpp \
@@ -45,7 +51,12 @@ SOURCES = \
 	$(ROCKET_SIM_PATH)/src/gps_sv_init.cpp
 
 SOURCES += $(ROCKET_SIM_PATCH_PATH)/src/malloc_count.cpp
+	   
+CSOURCES = $(ROCKET_SIM_PATCH_PATH)/src/ringbuffer.c
+
+
 OBJECTS = $(patsubst %.cpp, %.o, $(SOURCES))
+OBJECTS += $(patsubst %.c, %.o, $(CSOURCES))
 
 TARGET_MALLOC ?= ltalloc
 
@@ -65,12 +76,14 @@ deps := $(OBJECTS:%.o=%.o.d)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ -MMD -MF $@.d -c $<
+# %.o: %.c
+# 	$(CC) -c $< -o $@ $(CFLAGS) $(CLIBS)
 
 $(SHARED_LIBS): $(SHARED_LIBS_SOURCE)
 	$(CXX) $(CXXFLAGS) -fPIC -shared -o $@ $^
 
-$(PROJECT): $(OBJECTS) $(SHARED_LIBS)
-	$(CXX) -o $@ $(OBJECTS) $(SHARED_LIBS) $(LDFLAGS) -ldl
+$(PROJECT): $(OBJECTS) $(SHARED_LIBS) 
+	$(CXX) -o $@ $(OBJECTS) $(SHARED_LIBS) $(LDFLAGS) -ldl -pthread
 
 run: $(PROJECT)
 	./$(PROJECT)

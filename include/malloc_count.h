@@ -30,8 +30,7 @@
 #define _MALLOC_COUNT_H_
 
 #include <stdlib.h>
-
-extern int clock_get_monotonic_time(struct timespec *ts);
+#include <ringbuffer.h>
 
 #ifdef __cplusplus
 extern "C" { /* for inclusion from C++ */

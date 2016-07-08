@@ -13,7 +13,7 @@ extern int clock_get_monotonic_time(struct timespec *ts);
 extern "C" { /* for inclusion from C++ */
 #endif
 
-#define NUM_OF_CELL (16384) //must power of 2
+#define NUM_OF_CELL (8192) //must power of 2
 #define FILE_NAME "heap.log"
 #define GET_RINGBUFF_CELL_IDX(idx) ((idx) & (NUM_OF_CELL - 1))
 #define IDX_METHOD_ENABLE 0                      

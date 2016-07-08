@@ -5,12 +5,6 @@
 #include <stdint.h>
 #include "ringbuffer.h"
 
-#ifdef __MACH__
-#include <mach/clock.h>
-#include <mach/mach.h>
-#include <mach/kern_return.h>
-#endif
-
 
 struct ringbuff_body ring;
 
@@ -106,12 +100,14 @@ void *writer(void *ptr)
 
 void *reader(void *ptr)
 {
-        int loop;
-        loop = 100000000;
-        while(loop > 0)
+        int spaceloop, countloop;
+        while(1)
         {
             dequeue();
-            loop--;
+            sem_getvalue(&spacesem,&spaceloop);
+            sem_getvalue(&countsem,&countloop);
+            if (spaceloop == NUM_OF_CELL && countloop == 0)
+                break;
         }
         fflush(log_file);
         fclose(log_file);

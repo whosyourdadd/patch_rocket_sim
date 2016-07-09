@@ -66,13 +66,13 @@ void* dequeue(void)
         } 
         else
         {
-            fprintf(log_file,"%ld.%9lds %d\n", (long) ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].timestamp.tv_sec 
+            fprintf(log_file,"%ld.%9ld %d\n", (long) ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].timestamp.tv_sec 
                                               , ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].timestamp.tv_nsec
                                               , ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].curr_heap_size);
             ring.reader_idx++;
         }
 #else
-        fprintf(log_file,"%ld.%9lds %d\n", (long) ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].timestamp.tv_sec 
+        fprintf(log_file,"%ld.%9ld %d\n", (long) ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].timestamp.tv_sec 
                                           , ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].timestamp.tv_nsec
                                           , ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].curr_heap_size);
         ring.reader_idx++;

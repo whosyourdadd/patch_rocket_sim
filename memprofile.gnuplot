@@ -13,5 +13,5 @@ set title  font ",20" norotate
 set xlabel 'Timestamp [sec]'
 set ylabel 'Memory Usage [Byte]'
 #plot the first 1000~5000 row data
-plot "<(sed -n '5000,5030p' sorted_log.csv)" using 1:4   title "current" with lines ,\
+plot "<(sed -n '5000,5030p' heap_log.csv)" using 1:2   title "current" with lines ,\
 #     "<(sed -n '5000,10000p' sorted_log.csv)" using 1:3   title "Peak" with lines

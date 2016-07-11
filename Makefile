@@ -52,7 +52,7 @@ SOURCES = \
 
 SOURCES += $(ROCKET_SIM_PATCH_PATH)/src/malloc_count.cpp
 	   
-CSOURCES = $(ROCKET_SIM_PATCH_PATH)/src/ringbuffer.c
+SOURCES += $(ROCKET_SIM_PATCH_PATH)/src/ringbuffer.cpp
 
 
 OBJECTS = $(patsubst %.cpp, %.o, $(SOURCES))

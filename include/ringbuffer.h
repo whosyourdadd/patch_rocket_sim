@@ -14,7 +14,6 @@ extern "C" { /* for inclusion from C++ */
 #endif
 
 #define NUM_OF_RING                     (1)
-
 #define NUM_OF_CELL                     (16384) //must power of 2
 #define FILE_NAME                       "heap_log.csv"
 #define GET_RINGBUFF_CELL_IDX(idx)      ((idx) & (NUM_OF_CELL - 1))

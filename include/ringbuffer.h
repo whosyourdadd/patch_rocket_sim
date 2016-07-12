@@ -40,6 +40,7 @@ void ring_buffer_done(void);
 
 void enqueue(void *value);
 void *reader(void *ptr);
+void clock_get_hw_time(struct timespec *ts);
 
 #ifdef __cplusplus
 } /* extern "C" */

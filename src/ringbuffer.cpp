@@ -33,8 +33,29 @@ static struct ringbuff_body bodies[NUM_OF_RING];
  */
 sem_t               *sem_ring_avail;
 sem_t               *sem_ring_notify;
-
 static FILE         *log_file;
+
+
+void clock_get_hw_time(struct timespec *ts)
+{
+#ifdef __MACH__
+    clock_serv_t cclock;
+    mach_timespec_t mts;
+    kern_return_t ret_val;
+    if ((ret_val = host_get_clock_service(mach_host_self(),
+                                          SYSTEM_CLOCK, &cclock) != KERN_SUCCESS))
+        goto ret;
+
+    ret_val = clock_get_time(cclock, &mts);
+    mach_port_deallocate(mach_task_self(), cclock);
+    ts->tv_sec = mts.tv_sec;
+    ts->tv_nsec = mts.tv_nsec;
+ret:
+    return;
+#else
+  clock_gettime(CLOCK_MONOTONIC_COARSE, ts);
+#endif
+}
 
 
 static int dequeue(void)
@@ -105,7 +126,7 @@ void *writer(void *ptr)
     struct ringbuff_cell temp;
     for (i = 0; i < count; ++i)
     {
-        clock_get_monotonic_time(&temp.timestamp);
+        clock_get_hw_time(&temp.timestamp);
         temp.curr_heap_size = i;
         enqueue(&temp);
     }

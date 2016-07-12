@@ -159,7 +159,7 @@ extern void* malloc(size_t size)
         /* call read malloc procedure in libc */
 #if 1
             struct ringbuff_cell temp;
-            clock_get_monotonic_time(&temp.timestamp);
+            clock_get_hw_time(&temp.timestamp);
             temp.curr_heap_size = curr;
             enqueue(&temp);
 #endif

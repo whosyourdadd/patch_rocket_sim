@@ -3,113 +3,161 @@
 #include <semaphore.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <errno.h>
+#include <assert.h>
+
 #include "ringbuffer.h"
 
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#include <mach/kern_return.h>
+#endif
 
-struct ringbuff_body ring;
+
 
 /*
-As the mutex lock is stored in global (static) memory it can be 
-    initialized with PTHREAD_MUTEX_INITIALIZER.
-    If we had allocated space for the mutex on the heap, 
-    then we would have used pthread_mutex_init(ptr, NULL)
-*/
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; 
-sem_t countsem; 
-sem_t spacesem;
-FILE *log_file;
+ * As the mutex lock is stored in global (static) memory it can be 
+ * initialized with PTHREAD_MUTEX_INITIALIZER.
+ * If we had allocated space for the mutex on the heap, 
+ * then we would have used pthread_mutex_init(ptr, NULL)
+ */
+static pthread_mutex_t      ring_lock = PTHREAD_MUTEX_INITIALIZER;
+static struct ringbuff_body *ring;
+
+static int                  body_idx;
+static struct ringbuff_body bodies[NUM_OF_BUFFER];
+
+/*
+ * when there is a ring to write.
+ */
+sem_t               *sem_ring_avail;
+sem_t               *sem_ring_notify;
+
+static FILE         *log_file;
+
+
+static int _ring_buffer_dequeue(void)
+{
+    int rval = -1;
+
+    pthread_mutex_lock(&ring_lock);
+
+    if (ring) {
+        for (int i = 0; i < ring->writer_idx; i++)
+        {
+            struct ringbuff_cell *cell = &ring->cell[i];
+
+            fprintf(log_file,"%ld.%9lds %d\n", (long)cell->timestamp.tv_sec 
+                                             , cell->timestamp.tv_nsec
+                                             , cell->curr_heap_size);
+        }
+        memset(ring, 0, sizeof(*ring));
+        rval = 0;
+    }
+
+    pthread_mutex_unlock(&ring_lock);
+
+    return rval;
+}
+
+void ring_buffer_enqueue(void *value)
+{
+    static int reentrant = 0;
+    struct ringbuff_body *r;
+
+    assert(reentrant == 0);
+    reentrant++;
+
+    r = &bodies[body_idx];
+
+    if (value != NULL)
+        r->cell[r->writer_idx++] = *(struct ringbuff_cell *)value;
+
+    if (r->writer_idx == NUM_OF_CELL || value == NULL) {
+
+        if (r->writer_idx > 0) {
+            // wait until next ring is released
+            sem_wait(sem_ring_avail);
+
+            pthread_mutex_lock(&ring_lock);
+            ring     = r;
+            body_idx = (body_idx + 1) % NUM_OF_BUFFER;
+            pthread_mutex_unlock(&ring_lock);
+
+        } else {
+            pthread_mutex_lock(&ring_lock);
+            ring = NULL;
+            pthread_mutex_unlock(&ring_lock);
+        }
+
+        // notify consumer that a ring has been prepared
+        sem_post(sem_ring_notify);
+    }
+
+    reentrant--;
+}
+
+void *ring_buffer_writer(void *ptr)
+{
+    int i = 0;
+    int count = *(int *)ptr;
+    struct ringbuff_cell temp;
+    for (i = 0; i < count; ++i)
+    {
+        clock_get_monotonic_time(&temp.timestamp);
+        temp.curr_heap_size = i;
+        ring_buffer_enqueue(&temp);
+    }
+    return NULL;
+}
+
+void *ring_buffer_reader(void *ptr)
+{
+    // post 2 available rings
+    sem_post(sem_ring_avail);
+    sem_post(sem_ring_avail);
+
+    while (1)
+    {
+        if (sem_wait(sem_ring_notify) < 0) {
+            assert(errno == 0);
+        }
+        if (_ring_buffer_dequeue() < 0)
+            break;
+        sem_post(sem_ring_avail);
+    }
+
+    fflush(log_file);
+    fclose(log_file);
+    return NULL;
+}
 
 void ring_buffer_init(void)
 {
-        sem_init(&countsem, 0, 0);
-        sem_init(&spacesem, 0, NUM_OF_CELL);
-        
-        log_file = fopen(FILE_NAME,"w");
-        setvbuf(log_file, NULL, _IONBF, 0);
+    sem_unlink("ring_available");
+    sem_ring_avail = sem_open("ring_available", O_CREAT, 0700, 0);
+
+    if (sem_ring_avail == SEM_FAILED) {
+        printf("%s\n", strerror(errno));
+        exit(-1);
+    }
+
+    sem_unlink("ring_notify");
+    sem_ring_notify = sem_open("ring_notify", O_CREAT, 0700, 0);
+
+    if (sem_ring_notify == SEM_FAILED) {
+        printf("%s\n", strerror(errno));
+        exit(-1);
+    }
+
+    log_file = fopen(FILE_NAME,"w");
+    setvbuf(log_file, NULL, _IONBF, 0);
 }
 
-void enqueue(void *value)
+void ring_buffer_done(void)
 {
-        // wait if there is no space left:
-        sem_wait( &spacesem );
-        
-        pthread_mutex_lock(&lock);
-#if IDX_METHOD_ENABLE
-        if (ring.writer_idx == ring.reader_idx - 1) //ring buffer is full
-        {
-            /* TODO Need to wait the consumer clean a cell*/
-        } 
-        else
-        {
-            ring.cell[GET_RINGBUFF_CELL_IDX(ring.writer_idx)] = *(struct ringbuff_cell *)value;
-            ring.writer_idx ++;
-        }
-#else
-       ring.cell[(ring.writer_idx++) & (NUM_OF_CELL - 1)] = *(struct ringbuff_cell *)value;
-#endif /* IDX_METHOD_ENABLE */
-        pthread_mutex_unlock(&lock);
-        // increment the count of the number of items
-        sem_post(&countsem);
+    ring_buffer_enqueue(NULL);
+    ring_buffer_enqueue(NULL);
 }
 
-void* dequeue(void)
-{
-        // Wait if there are no items in the buffer
-        void *out_value = NULL;
-        sem_wait(&countsem);
-
-        pthread_mutex_lock(&lock);
-#if IDX_METHOD_ENABLE       
-        if (ring.writer_idx == ring.reader_idx) //ring buffer is empty
-        {
-            /* TODO Need to wait the producer enqueue the buffer*/
-        } 
-        else
-        {
-            fprintf(log_file,"%ld.%9ld %d\n", (long) ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].timestamp.tv_sec 
-                                              , ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].timestamp.tv_nsec
-                                              , ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].curr_heap_size);
-            ring.reader_idx++;
-        }
-#else
-        fprintf(log_file,"%ld.%9ld %d\n", (long) ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].timestamp.tv_sec 
-                                          , ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].timestamp.tv_nsec
-                                          , ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].curr_heap_size);
-        ring.reader_idx++;
-#endif /*IDX_METHOD_ENABLE*/
-        pthread_mutex_unlock(&lock);
-
-        // Increment the count of the number of spaces
-        sem_post(&spacesem);
-        return out_value;
-}
-
-void *writer(void *ptr)
-{
-        int i = 0;
-        int count = *(int *)ptr;
-        struct ringbuff_cell temp;
-        for (i = 0; i < count; ++i)
-        {
-            clock_get_monotonic_time(&temp.timestamp);
-            temp.curr_heap_size = i;
-            enqueue(&temp);
-        }
-        return NULL;
-}
-
-void *reader(void *ptr)
-{
-        int spaceloop, countloop;
-        while(1)
-        {
-            dequeue();
-            sem_getvalue(&spacesem,&spaceloop);
-            sem_getvalue(&countsem,&countloop);
-            if (spaceloop == NUM_OF_CELL && countloop == 0)
-                break;
-        }
-        fflush(log_file);
-        fclose(log_file);
-        return NULL;
-}

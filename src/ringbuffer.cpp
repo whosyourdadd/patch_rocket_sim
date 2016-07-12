@@ -25,8 +25,8 @@
 static pthread_mutex_t      ring_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct ringbuff_body *ring;
 
-static int                  body_idx;
-static struct ringbuff_body bodies[NUM_OF_BUFFER];
+static int                  ring_body_idx;
+static struct ringbuff_body bodies[NUM_OF_RING];
 
 /*
  * when there is a ring to write.
@@ -37,16 +37,16 @@ sem_t               *sem_ring_notify;
 static FILE         *log_file;
 
 
-static int _ring_buffer_dequeue(void)
+static int dequeue(void)
 {
     int rval = -1;
-
+    int cell_idx;
     pthread_mutex_lock(&ring_lock);
 
     if (ring) {
-        for (int i = 0; i < ring->writer_idx; i++)
+        for (cell_idx = 0; cell_idx < ring->writer_idx; cell_idx++)
         {
-            struct ringbuff_cell *cell = &ring->cell[i];
+            struct ringbuff_cell *cell = &ring->cell[cell_idx];
 
             fprintf(log_file,"%ld.%9lds %d\n", (long)cell->timestamp.tv_sec 
                                              , cell->timestamp.tv_nsec
@@ -61,7 +61,7 @@ static int _ring_buffer_dequeue(void)
     return rval;
 }
 
-void ring_buffer_enqueue(void *value)
+void enqueue(void *value)
 {
     static int reentrant = 0;
     struct ringbuff_body *r;
@@ -69,7 +69,7 @@ void ring_buffer_enqueue(void *value)
     assert(reentrant == 0);
     reentrant++;
 
-    r = &bodies[body_idx];
+    r = &bodies[ring_body_idx];
 
     if (value != NULL)
         r->cell[r->writer_idx++] = *(struct ringbuff_cell *)value;
@@ -82,7 +82,7 @@ void ring_buffer_enqueue(void *value)
 
             pthread_mutex_lock(&ring_lock);
             ring     = r;
-            body_idx = (body_idx + 1) % NUM_OF_BUFFER;
+            ring_body_idx = (ring_body_idx + 1) % NUM_OF_RING;
             pthread_mutex_unlock(&ring_lock);
 
         } else {
@@ -98,7 +98,7 @@ void ring_buffer_enqueue(void *value)
     reentrant--;
 }
 
-void *ring_buffer_writer(void *ptr)
+void *writer(void *ptr)
 {
     int i = 0;
     int count = *(int *)ptr;
@@ -107,12 +107,12 @@ void *ring_buffer_writer(void *ptr)
     {
         clock_get_monotonic_time(&temp.timestamp);
         temp.curr_heap_size = i;
-        ring_buffer_enqueue(&temp);
+        enqueue(&temp);
     }
     return NULL;
 }
 
-void *ring_buffer_reader(void *ptr)
+void *reader(void *ptr)
 {
     // post 2 available rings
     sem_post(sem_ring_avail);
@@ -123,7 +123,7 @@ void *ring_buffer_reader(void *ptr)
         if (sem_wait(sem_ring_notify) < 0) {
             assert(errno == 0);
         }
-        if (_ring_buffer_dequeue() < 0)
+        if (dequeue() < 0)
             break;
         sem_post(sem_ring_avail);
     }
@@ -157,7 +157,7 @@ void ring_buffer_init(void)
 
 void ring_buffer_done(void)
 {
-    ring_buffer_enqueue(NULL);
-    ring_buffer_enqueue(NULL);
+    enqueue(NULL);
+    enqueue(NULL);
 }
 

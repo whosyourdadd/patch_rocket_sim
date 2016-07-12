@@ -13,9 +13,9 @@ extern int clock_get_monotonic_time(struct timespec *ts);
 extern "C" { /* for inclusion from C++ */
 #endif
 
-#define NUM_OF_BUFFER                   (2)
+#define NUM_OF_RING                     (2)
 #define NUM_OF_CELL                     (8192) //must power of 2
-#define FILE_NAME                       "heap.log"
+#define FILE_NAME                       "heap_log.csv"
 #define GET_RINGBUFF_CELL_IDX(idx)      ((idx) & (NUM_OF_CELL - 1))
 #define IDX_METHOD_ENABLE               0                      
 
@@ -38,8 +38,8 @@ struct ring_ll {
 void ring_buffer_init(void);
 void ring_buffer_done(void);
 
-void ring_buffer_enqueue(void *value);
-void *ring_buffer_reader(void *ptr);
+void enqueue(void *value);
+void *reader(void *ptr);
 
 #ifdef __cplusplus
 } /* extern "C" */

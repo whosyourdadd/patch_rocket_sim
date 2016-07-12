@@ -161,7 +161,7 @@ extern void* malloc(size_t size)
             struct ringbuff_cell temp;
             clock_get_monotonic_time(&temp.timestamp);
             temp.curr_heap_size = curr;
-            ring_buffer_enqueue(&temp);
+            enqueue(&temp);
 #endif
         ret = (*real_malloc)(alignment + size);
         inc_count(size);

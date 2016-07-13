@@ -11,6 +11,7 @@
 #include <mach/kern_return.h>
 #endif
 
+#define BINARY_FORMAT 1
 
 /*
 As the mutex lock is stored in global (static) memory it can be 
@@ -50,7 +51,11 @@ ret:
 
 void ring_buffer_init(void)
 {
+#if BINARY_FORMAT
+        log_file = fopen(FILE_NAME,"wb");
+#else
         log_file = fopen(FILE_NAME,"w");
+#endif   
         setvbuf(log_file, NULL, _IONBF, 0);
 }
 
@@ -78,10 +83,14 @@ void* dequeue(void)
         {
             pthread_cond_wait(&cond_count, &ring_lock);
         }
-
+#if BINARY_FORMAT
+            fwrite(&r->cell[GET_RINGBUFF_CELL_IDX(r->reader_idx)],sizeof(struct ringbuff_cell),1,log_file);
+#else
             fprintf(log_file,"%ld.%9ld, %d\n", (long)r->cell[GET_RINGBUFF_CELL_IDX(r->reader_idx)].timestamp.tv_sec 
                                          , r->cell[GET_RINGBUFF_CELL_IDX(r->reader_idx)].timestamp.tv_nsec
                                          , r->cell[GET_RINGBUFF_CELL_IDX(r->reader_idx)].curr_heap_size);
+
+#endif
         r->reader_idx++;
         pthread_mutex_unlock(&ring_lock);
         pthread_cond_signal(&cond_space);

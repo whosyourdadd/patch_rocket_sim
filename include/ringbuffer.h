@@ -20,8 +20,8 @@ extern "C" { /* for inclusion from C++ */
 
 
 struct ringbuff_cell {
-        struct timespec timestamp;
         uint32_t curr_heap_size;
+        struct timespec timestamp;
 };
 
 struct ringbuff_body {

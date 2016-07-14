@@ -158,8 +158,9 @@ extern void* malloc(size_t size)
     {
         /* call read malloc procedure in libc */
 #if 1
-            struct ringbuff_cell temp;
-            clock_get_hw_time(&temp.timestamp);
+            struct ringbuff_data temp;
+            //clock_get_hw_time(&temp.timestamp);
+            temp.timestamp = current_time;
             temp.curr_heap_size = curr;
             enqueue(&temp);
 #endif
@@ -378,17 +379,33 @@ static void load_glib() {
     }
 }
 
+pthread_t tid1, tid2;
+
 static __attribute__((constructor)) void init(void)
 {
+    int ret1, ret2;
 #ifdef LTALLOC     
     load_dynamic_lib();
 #else
     load_glib();
 #endif
+
+    ring_buffer_init();
+    set_thread_to_CPU("main thread", 0);
+    ret1 = pthread_create(&tid1, NULL, get_curr_time_thread_loop, NULL);
+    ret2 = pthread_create(&tid2, NULL, reader, NULL);
+
+    printf("pthread_create() for reader \n");
+    printf("pthread_create() for get_curr_time_thread_loop \n");
+    printf("rocket_main_thread Ready to Run\n");
 }
 
 static __attribute__((destructor)) void finish(void)
 {
+    end_flag = true;
+    pthread_join(tid1, NULL);
+    pthread_join(tid2, NULL);
+    printf("All Finish. Ready exit\n");
     fprintf(stderr, PPREFIX
             "exiting, total: %'lld, peak: %'lld, current: %'lld\n",
             total, peak, curr);

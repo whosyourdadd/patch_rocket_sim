@@ -394,6 +394,8 @@ static __attribute__((constructor)) void init(void)
     set_thread_to_CPU("main thread", 0);
     ret1 = pthread_create(&tid1, NULL, get_curr_time_thread_loop, NULL);
     ret2 = pthread_create(&tid2, NULL, reader, NULL);
+    set_thread_to_CPU("get_curr_time_thread_loop", 3);
+    set_thread_to_CPU("reader",2); 
 
     printf("pthread_create() for reader \n");
     printf("pthread_create() for get_curr_time_thread_loop \n");

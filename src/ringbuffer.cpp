@@ -104,7 +104,6 @@ void* dequeue(void)
 void *reader(void *ptr)
 {
         /* TODO: stop the writer */
-        set_thread_to_CPU(__FUNCTION__,2); 
         while (!end_flag)
         {
             dequeue();
@@ -171,7 +170,6 @@ static inline double get_curr_time() {
 /* Periodic update the timer*/
 void *get_curr_time_thread_loop(void*) 
 {
-    set_thread_to_CPU(__FUNCTION__, 3);
     while(!end_flag) {
         current_time = get_curr_time();
         usleep(100);  

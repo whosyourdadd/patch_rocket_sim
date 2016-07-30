@@ -61,28 +61,24 @@ void ring_buffer_init(void)
 
 void enqueue(void *value)
 {
-    while(__sync_bool_compare_and_swap(&g_bodies.writer_idx, g_bodies.reader_idx - 1, g_bodies.writer_idx));
-    //while(__sync_bool_compare_and_swap(&g_bodies.len, NUM_OF_CELL, NUM_OF_CELL));
-    //uint64_t tmp = __sync_fetch_and_add(&g_bodies.writer_idx, 1);
+    while(__sync_bool_compare_and_swap(&g_bodies.len, NUM_OF_CELL, NUM_OF_CELL));
+    uint64_t tmp = __sync_fetch_and_add(&g_bodies.writer_idx, 1);
     g_bodies.cell[GET_RINGBUFF_CELL_IDX(g_bodies.writer_idx)] = *(struct ringbuff_cell *)value;
-    __sync_fetch_and_add(&g_bodies.writer_idx, 1);
-    //__sync_add_and_fetch(&g_bodies.len, 1);
+    __sync_add_and_fetch(&g_bodies.len, 1);
 }
 
 void* dequeue(void)
 {
-        while(__sync_bool_compare_and_swap(&g_bodies.reader_idx, g_bodies.writer_idx, g_bodies.reader_idx));
-        //while(__sync_bool_compare_and_swap(&g_bodies.len, 0, 0));
-        //uint64_t tmp = __sync_fetch_and_add(&g_bodies.reader_idx, 1);
+        while(__sync_bool_compare_and_swap(&g_bodies.len, 0, 0));
+        uint64_t tmp = __sync_fetch_and_add(&g_bodies.reader_idx, 1);
 #if BINARY_FORMAT
         fwrite(&g_bodies.cell[GET_RINGBUFF_CELL_IDX(g_bodies.reader_idx)],sizeof(struct ringbuff_cell),1,log_file);
-        __sync_fetch_and_add(&g_bodies.reader_idx, 1);
-#else
+#else /*charter format*/
          fprintf(log_file,"%ld.%ld %d\n", (long)g_bodies.cell[GET_RINGBUFF_CELL_IDX(tmp)].timestamp.tv_sec 
                                              , g_bodies.cell[GET_RINGBUFF_CELL_IDX(tmp)].timestamp.tv_nsec
                                              , g_bodies.cell[GET_RINGBUFF_CELL_IDX(tmp)].curr_heap_size);
 #endif
-         //__sync_sub_and_fetch(&g_bodies.len, 1);
+        __sync_sub_and_fetch(&g_bodies.len, 1);
         return NULL;
 }
 

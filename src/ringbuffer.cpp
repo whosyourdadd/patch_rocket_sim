@@ -20,12 +20,11 @@ As the mutex lock is stored in global (static) memory it can be
     then we would have used pthread_mutex_init(ptr, NULL)
 */
 pthread_mutex_t     ring_lock   = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t      cond_space  = PTHREAD_COND_INITIALIZER;
-pthread_cond_t      cond_count  = PTHREAD_COND_INITIALIZER;
 double current_time;
 bool end_flag = false;
 
-static struct ringbuff_body ring;
+static struct ringbuff_body g_bodies;
+int ring_body_idx;
 FILE *log_file;
 
 void clock_get_hw_time(struct timespec *ts){
@@ -58,46 +57,32 @@ void ring_buffer_init(void)
         log_file = fopen(FILE_NAME,"w");
 #endif   
         setvbuf(log_file, NULL, _IONBF, 0);
-        ring.wdata_index = 0;
 }
 
 void enqueue(void *value)
 {
-
-        pthread_mutex_lock(&ring_lock);
-        while (ring.writer_idx == ring.reader_idx - 1) //ring buffer is full
-        {
-            pthread_cond_wait(&cond_space, &ring_lock);
-        }
-        ring.cell[GET_RINGBUFF_CELL_IDX(ring.writer_idx)].data[GET_CELL_DATA_IDX(ring.wdata_index++)] = *(struct ringbuff_data *)value;
-        if(GET_CELL_DATA_IDX(ring.wdata_index) ==  NUM_OF_DATA - 1)
-        {
-                ring.wdata_index = 0;
-                __sync_fetch_and_add(&ring.writer_idx, 1);
-        }
-       
-        pthread_mutex_unlock(&ring_lock);
-        pthread_cond_signal(&cond_count);
+    while(__sync_bool_compare_and_swap(&g_bodies.writer_idx, g_bodies.reader_idx - 1, g_bodies.writer_idx));
+    //while(__sync_bool_compare_and_swap(&g_bodies.len, NUM_OF_CELL, NUM_OF_CELL));
+    //uint64_t tmp = __sync_fetch_and_add(&g_bodies.writer_idx, 1);
+    g_bodies.cell[GET_RINGBUFF_CELL_IDX(g_bodies.writer_idx)] = *(struct ringbuff_cell *)value;
+    __sync_fetch_and_add(&g_bodies.writer_idx, 1);
+    //__sync_add_and_fetch(&g_bodies.len, 1);
 }
 
 void* dequeue(void)
 {
-        pthread_mutex_lock(&ring_lock);
-        while (ring.writer_idx == ring.reader_idx) //ring buffer is empty
-        {
-            pthread_cond_wait(&cond_count, &ring_lock);
-        }
+        while(__sync_bool_compare_and_swap(&g_bodies.reader_idx, g_bodies.writer_idx, g_bodies.reader_idx));
+        //while(__sync_bool_compare_and_swap(&g_bodies.len, 0, 0));
+        //uint64_t tmp = __sync_fetch_and_add(&g_bodies.reader_idx, 1);
 #if BINARY_FORMAT
-            fwrite(&ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)],sizeof(struct ringbuff_cell),1,log_file);
+        fwrite(&g_bodies.cell[GET_RINGBUFF_CELL_IDX(g_bodies.reader_idx)],sizeof(struct ringbuff_cell),1,log_file);
+        __sync_fetch_and_add(&g_bodies.reader_idx, 1);
 #else
-            fprintf(log_file,"%ld, %d\n", (long)ring.cell[GET_RINGBUFF_CELL_IDX(ring.reader_idx)].timestamp 
-                                         , ring.cell[GET_RINGBUFF_CELL_IDX(ring->reader_idx)].curr_heap_size);
-
+         fprintf(log_file,"%ld.%ld %d\n", (long)g_bodies.cell[GET_RINGBUFF_CELL_IDX(tmp)].timestamp.tv_sec 
+                                             , g_bodies.cell[GET_RINGBUFF_CELL_IDX(tmp)].timestamp.tv_nsec
+                                             , g_bodies.cell[GET_RINGBUFF_CELL_IDX(tmp)].curr_heap_size);
 #endif
-        __sync_fetch_and_add(&ring.reader_idx,1);
-        pthread_mutex_unlock(&ring_lock);
-        pthread_cond_signal(&cond_space);
-        
+         //__sync_sub_and_fetch(&g_bodies.len, 1);
         return NULL;
 }
 

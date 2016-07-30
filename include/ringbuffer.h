@@ -14,7 +14,6 @@
 extern "C" { /* for inclusion from C++ */
 #endif
 
-#define NUM_OF_DATA                     (1024) //must power of 2
 #define NUM_OF_CELL                     (8192) //must power of 2
 #define FILE_NAME                       "heap.log"
 #define GET_RINGBUFF_CELL_IDX(idx)      ((idx) & (NUM_OF_CELL - 1))
@@ -26,20 +25,17 @@ extern "C" { /* for inclusion from C++ */
 #define handle_error_en(en, msg) \
        do { errno = en; perror(msg); } while (0)
 
-struct ringbuff_data {
-    double   timestamp;
-    uint32_t curr_heap_size;
-};
 
 struct ringbuff_cell {
-    struct ringbuff_data data[NUM_OF_DATA];
+        double timestamp;
+        uint32_t curr_heap_size;
 };
 
 struct ringbuff_body {
         struct ringbuff_cell cell[NUM_OF_CELL];
         uint64_t writer_idx;
         uint64_t reader_idx;
-        uint32_t wdata_index;
+        uint32_t len;
 };
 
 extern double current_time;
@@ -50,6 +46,7 @@ void ring_buffer_init(void);
 void *reader(void *ptr);
 void set_thread_to_CPU(const char* function_name, unsigned int n);
 void *get_curr_time_thread_loop(void*);
+void clock_get_hw_time(struct timespec *ts);
 
 #ifdef __cplusplus
 } /* extern "C" */

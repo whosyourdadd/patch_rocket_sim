@@ -158,7 +158,7 @@ extern void* malloc(size_t size)
     {
         /* call read malloc procedure in libc */
 #if 1
-            struct ringbuff_data temp;
+            struct ringbuff_cell temp;
             //clock_get_hw_time(&temp.timestamp);
             temp.timestamp = current_time;
             temp.curr_heap_size = curr;
@@ -391,14 +391,14 @@ static __attribute__((constructor)) void init(void)
 #endif
 
     ring_buffer_init();
-    set_thread_to_CPU("main thread", 0);
-    ret1 = pthread_create(&tid1, NULL, get_curr_time_thread_loop, NULL);
+    //set_thread_to_CPU("main thread", 0);
+    //ret1 = pthread_create(&tid1, NULL, get_curr_time_thread_loop, NULL);
     ret2 = pthread_create(&tid2, NULL, reader, NULL);
-    set_thread_to_CPU("get_curr_time_thread_loop", 3);
-    set_thread_to_CPU("reader",2); 
+    set_thread_to_CPU("get_curr_time_thread_loop", 0);
+    //set_thread_to_CPU("reader",2); 
 
     printf("pthread_create() for reader \n");
-    printf("pthread_create() for get_curr_time_thread_loop \n");
+    //printf("pthread_create() for get_curr_time_thread_loop \n");
     printf("rocket_main_thread Ready to Run\n");
 }
 

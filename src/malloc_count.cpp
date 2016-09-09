@@ -32,9 +32,10 @@
 #include <stdio.h>
 #include <locale.h>
 #include <dlfcn.h>
-#include "ringbuffer.h"
 #include "malloc_count.h"
 #include <new>
+#include <pthread.h>
+#include "ringbuffer.h"
 
 /* user-defined options for output malloc()/free() operations to stderr */
 
@@ -77,6 +78,9 @@ static long long peak = 0, curr = 0, total = 0, num_allocs = 0;
 
 static malloc_count_callback_type callback = NULL;
 static void* callback_cookie = NULL;
+
+pthread_t reader_thread_id;
+static struct ringbuffer rb_buffer;
 
 /* add allocation to statistics */
 static void inc_count(size_t inc)
@@ -147,7 +151,6 @@ void malloc_count_set_callback(malloc_count_callback_type cb, void* cookie)
 /****************************************************/
 /* exported symbols that overlay the libc functions */
 /****************************************************/
-
 /* exported malloc symbol that overrides loading from libc */
 extern void* malloc(size_t size)
 {
@@ -157,12 +160,11 @@ extern void* malloc(size_t size)
     if (real_malloc)
     {
         /* call read malloc procedure in libc */
-#if 1
-            struct ringbuff_cell temp;
-            //clock_get_hw_time(&temp.timestamp);
-            temp.timestamp = current_time;
-            temp.curr_heap_size = curr;
-            enqueue(&temp);
+#if 1 // Add your record info
+        struct ringbuff_cell temp;
+        //clock_get_hw_time(&temp.timestamp);
+        temp.curr_heap_size = curr;
+        rb_put(&rb_buffer,&temp);
 #endif
         ret = (*real_malloc)(alignment + size);
         inc_count(size);
@@ -379,34 +381,34 @@ static void load_glib() {
     }
 }
 
-pthread_t tid1, tid2;
+void *reader_thread(void *arg)
+{
+        while (reader_running_flag)
+        {
+            rb_get(&rb_buffer, NULL);
+        }
+        rb_deinit(&rb_buffer);
+        return NULL;
+}
 
 static __attribute__((constructor)) void init(void)
 {
-    int ret1, ret2;
 #ifdef LTALLOC     
     load_dynamic_lib();
 #else
     load_glib();
 #endif
-
-    ring_buffer_init();
-    //set_thread_to_CPU("main thread", 0);
-    //ret1 = pthread_create(&tid1, NULL, get_curr_time_thread_loop, NULL);
-    ret2 = pthread_create(&tid2, NULL, reader, NULL);
-    set_thread_to_CPU("get_curr_time_thread_loop", 0);
-    //set_thread_to_CPU("reader",2); 
+    rb_init(&rb_buffer);
+    pthread_create(&reader_thread_id, NULL, reader_thread, NULL);
 
     printf("pthread_create() for reader \n");
-    //printf("pthread_create() for get_curr_time_thread_loop \n");
     printf("rocket_main_thread Ready to Run\n");
 }
 
 static __attribute__((destructor)) void finish(void)
 {
-    end_flag = true;
-    pthread_join(tid1, NULL);
-    pthread_join(tid2, NULL);
+    reader_running_flag = false;
+    pthread_join(reader_thread_id, NULL);
     printf("All Finish. Ready exit\n");
     fprintf(stderr, PPREFIX
             "exiting, total: %'lld, peak: %'lld, current: %'lld\n",

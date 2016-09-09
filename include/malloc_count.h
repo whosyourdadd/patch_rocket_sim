@@ -30,7 +30,6 @@
 #define _MALLOC_COUNT_H_
 
 #include <stdlib.h>
-#include <ringbuffer.h>
 
 #ifdef __cplusplus
 extern "C" { /* for inclusion from C++ */
@@ -58,7 +57,6 @@ extern void malloc_count_set_callback(malloc_count_callback_type cb,
 
 /* user function which prints current and peak allocation to stderr */
 extern void malloc_count_print_status(void);
-
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

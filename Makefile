@@ -16,9 +16,9 @@ CXXFLAGS += -fmessage-length=0 \
 	    -fno-stack-protector \
 	    -fno-asynchronous-unwind-tables
 # LDFLAGS = /usr/lib/libtcmalloc_minimal.so.4
-# CLIBS = -ldl
-# CFLAGS = -g -W -Wall -pthread
-# CFLAGS += -I$(ROCKET_SIM_PATCH_PATH)/include
+#CLIBS = -ldl
+#CFLAGS = -g -W -Wall -pthread
+CFLAGS += -I$(ROCKET_SIM_PATCH_PATH)/include
 
 SOURCES = \
 	$(ROCKET_SIM_PATH)/src/execution.cpp \
@@ -52,7 +52,7 @@ SOURCES = \
 
 SOURCES += $(ROCKET_SIM_PATCH_PATH)/src/malloc_count.cpp
 	   
-SOURCES += $(ROCKET_SIM_PATCH_PATH)/src/ringbuffer.cpp
+CSOURCES += $(ROCKET_SIM_PATCH_PATH)/src/ringbuffer.c
 
 
 OBJECTS = $(patsubst %.cpp, %.o, $(SOURCES))
@@ -76,8 +76,8 @@ deps := $(OBJECTS:%.o=%.o.d)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ -MMD -MF $@.d -c $<
-# %.o: %.c
-# 	$(CC) -c $< -o $@ $(CFLAGS) $(CLIBS)
+%.o: %.c
+	$(CC) -c $< -o $@ $(CFLAGS) $(CLIBS)
 
 $(SHARED_LIBS): $(SHARED_LIBS_SOURCE)
 	$(CXX) $(CXXFLAGS) -fPIC -shared -o $@ $^

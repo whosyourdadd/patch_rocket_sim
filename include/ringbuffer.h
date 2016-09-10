@@ -14,14 +14,15 @@
 extern "C" { /* for inclusion from C++ */
 #endif
 
-#define NUM_OF_CELL                     (16384) //must power of 2
+#define NUM_OF_CELL                     (0x80000000) //must power of 2
 #define RB_CELL_IDX(idx)      ((idx) & (NUM_OF_CELL - 1)) //mod NUM_OF_CELL
 #define FILE_NAME                       "heap.log"
+#define BILLION 1000000000L
 #define INLINE                        __attribute__((always_inline))
 extern bool reader_running_flag;
 struct ringbuff_cell {
         uint32_t curr_heap_size;
-        struct timespec timestamp;
+        double timestamp;
 };
 
 struct ringbuffer
@@ -38,6 +39,7 @@ void rb_put(struct ringbuffer *rb, void *value);
 void rb_get(struct ringbuffer *rb, void *value);
 
 void clock_get_hw_time(struct timespec *ts);
+INLINE double get_curr_time(void);
 
 #ifdef __cplusplus
 } /* extern "C" */

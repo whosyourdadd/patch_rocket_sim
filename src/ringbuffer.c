@@ -43,13 +43,10 @@ INLINE void rb_get(struct ringbuffer *rb, void *value)
         __sync_fetch_and_add(&rb->reader_idx, 1);
 
 #if 0 //Add your logging method
-        struct ringbuff_cell *temp;
-        temp = &rb->cell[RB_CELL_IDX(rb->reader_idx)];
-        fprintf(log_file, "%ld.%ld, %d\n", temp->timestamp.tv_sec
-                                         , temp->timestamp.tv_nsec
-                                         , temp->curr_heap_size);
+        fwrite(&rb->cell[RB_CELL_IDX(rb->reader_idx)], 
+                sizeof(struct ringbuff_cell), 1, log_file);
 #else
-        //fprintf(log_file, "%d\n", rb->cell[RB_CELL_IDX(rb->reader_idx)].curr_heap_size);
+        fprintf(log_file, "%d\n", rb->cell[RB_CELL_IDX(rb->reader_idx)].curr_heap_size);
 #endif
         __sync_sub_and_fetch(&rb->cell_nums, 1);
 }
@@ -75,4 +72,12 @@ ret:
   //clock_gettime(CLOCK_MONOTONIC_COARSE, ts);
   clock_gettime(CLOCK_MONOTONIC, ts);
 #endif
+}
+
+static struct timespec ts;
+INLINE double get_curr_time(void) 
+{
+    
+    clock_get_hw_time(&ts);
+    return ts.tv_sec + (double)ts.tv_nsec/(double)BILLION;
 }

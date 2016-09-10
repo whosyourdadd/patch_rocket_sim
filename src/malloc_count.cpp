@@ -163,6 +163,7 @@ extern void* malloc(size_t size)
 #if 1 // Add your record info
         struct ringbuff_cell temp;
         //clock_get_hw_time(&temp.timestamp);
+        //temp.timestamp = get_curr_time();
         temp.curr_heap_size = curr;
         rb_put(&rb_buffer,&temp);
 #endif

@@ -10,7 +10,7 @@ As the mutex lock is stored in global (static) memory it can be
     then we would have used pthread_mutex_init(ptr, NULL)
 */
 FILE              *log_file;
-bool reader_running_flag = true;
+bool reader_end_flag = false;
 
 void rb_init(struct ringbuffer *rb)
 {
@@ -19,7 +19,7 @@ void rb_init(struct ringbuffer *rb)
     rb->cell_nums = 0;
     log_file = fopen(FILE_NAME,"w");
     setvbuf(log_file, NULL, _IONBF, 0);
-    reader_running_flag = true;
+    reader_end_flag = false;
 }
 
 void rb_deinit(struct ringbuffer *rb)

@@ -81,6 +81,7 @@ static void* callback_cookie = NULL;
 
 pthread_t reader_thread_id;
 static struct ringbuffer rb_buffer;
+#define EQUAL(a,b) ((a)==(b))
 
 /* add allocation to statistics */
 static void inc_count(size_t inc)
@@ -384,7 +385,7 @@ static void load_glib() {
 
 void *reader_thread(void *arg)
 {
-        while (reader_running_flag)
+        while (!(reader_end_flag && EQUAL(rb_buffer.reader_idx, rb_buffer.writer_idx)))
         {
             rb_get(&rb_buffer, NULL);
         }
@@ -408,7 +409,9 @@ static __attribute__((constructor)) void init(void)
 
 static __attribute__((destructor)) void finish(void)
 {
-    reader_running_flag = false;
+    reader_end_flag = true;
+    printf("Please wait file operation. widx:%d, ridx:%d ......\n", 
+            rb_buffer.writer_idx, rb_buffer.reader_idx);
     pthread_join(reader_thread_id, NULL);
     printf("All Finish. Ready exit\n");
     fprintf(stderr, PPREFIX

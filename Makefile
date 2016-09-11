@@ -1,8 +1,17 @@
 PROJECT = rocket-sim-exe
 ROCKET_SIM_PATCH_PATH :=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROCKET_SIM_PATH := $(abspath $(dir $(ROCKET_SIM_PATCH_PATH)))
+
+###### makefile parameter ######
+tm ?= ltalloc
+
+###### C flags #####
 CC = gcc
+CFLAGS += -I$(ROCKET_SIM_PATCH_PATH)/include
+
+##### C++ flags #####
 CXX = g++
+
 CXXFLAGS =-g \
 	  -I$(ROCKET_SIM_PATCH_PATH)/include\
 	  -I$(ROCKET_SIM_PATH)/include \
@@ -15,12 +24,12 @@ CXXFLAGS += -fmessage-length=0 \
 	    -fvisibility-inlines-hidden \
 	    -fno-stack-protector \
 	    -fno-asynchronous-unwind-tables
-# LDFLAGS = /usr/lib/libtcmalloc_minimal.so.4
-#CLIBS = -ldl
-#CFLAGS = -g -W -Wall -pthread
-CFLAGS += -I$(ROCKET_SIM_PATCH_PATH)/include
+##### C Source #####
+CSOURCE += $(ROCKET_SIM_PATCH_PATH)/src/ringbuffer.c
 
-SOURCES = \
+##### C++ Source #####
+
+CPPSOURCE = \
 	$(ROCKET_SIM_PATH)/src/execution.cpp \
 	$(ROCKET_SIM_PATH)/src/actuator.cpp \
 	$(ROCKET_SIM_PATH)/src/aerodynamics.cpp \
@@ -50,20 +59,21 @@ SOURCES = \
 	$(ROCKET_SIM_PATH)/src/gps_quadriga.cpp \
 	$(ROCKET_SIM_PATH)/src/gps_sv_init.cpp
 
-SOURCES += $(ROCKET_SIM_PATCH_PATH)/src/malloc_count.cpp
+CPPSOURCE += $(ROCKET_SIM_PATCH_PATH)/src/malloc_count.cpp
 	   
-CSOURCES += $(ROCKET_SIM_PATCH_PATH)/src/ringbuffer.c
 
 
-OBJECTS = $(patsubst %.cpp, %.o, $(SOURCES))
-OBJECTS += $(patsubst %.c, %.o, $(CSOURCES))
+##### OBJECTS #####
+OBJECTS = $(patsubst %.cpp, %.o, $(CPPSOURCE))
+OBJECTS += $(patsubst %.c, %.o, $(CSOURCE))
 
-TARGET_MALLOC ?= ltalloc
+##### Target malloc LIB#####
+TARGET_MALLOC = $(tm)
 
 ifeq ($(TARGET_MALLOC),ltalloc)
   SHARED_LIBS_SOURCE = $(ROCKET_SIM_PATCH_PATH)/src/ltalloc.cpp
   SHARED_LIBS =  $(patsubst %.cpp, %.so, $(SHARED_LIBS_SOURCE))
-  CXXFLAGS += -DLTALLOC
+  CXXFLAGS += -DLTALLOC  
 else
 #Default is use glibc
   SHARED_LIBS_SOURCE =

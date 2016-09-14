@@ -334,8 +334,9 @@ extern void* realloc(void* ptr, size_t size)
 }
 
 static void load_dynamic_lib() {
-    puts("Use dynamic library!");
     
+#ifdef LTALLOC 
+    puts("Use LTALLOC dynamic library!");   
     char *error;
     void *handle = dlopen("./patch_rocket_sim/src/ltalloc.so", RTLD_LAZY);
     if ((error = dlerror()) != NULL) {
@@ -358,6 +359,35 @@ static void load_dynamic_lib() {
         fprintf(stderr, "error %s\n", error);
         exit(EXIT_FAILURE);
     }
+#endif /* LTALLOC */
+
+#ifdef SCALLOC  
+    puts("Use SCALLOC dynamic library! (mac)");  
+    char *error;
+    void *handle = dlopen("./patch_rocket_sim/src/scalloc-1.0.0/out/Release/libscalloc.dylib", 
+                            RTLD_LAZY);
+    if ((error = dlerror()) != NULL) {
+        fprintf(stderr, "error %s\n", error);
+        exit(EXIT_FAILURE);
+    }
+    real_malloc = (malloc_type)dlsym(handle, "_scalloc_malloc");
+    if ((error = dlerror()) != NULL) {
+        fprintf(stderr, "error %s\n", error);
+        exit(EXIT_FAILURE);
+    }
+    real_realloc = (realloc_type)dlsym(handle, "_scalloc_realloc");
+    if ((error = dlerror()) != NULL) {
+        fprintf(stderr, "error %s\n", error);
+        exit(EXIT_FAILURE);
+    }
+
+    real_free = (free_type)dlsym(handle, "_scalloc_free");
+    if ((error = dlerror()) != NULL) {
+        fprintf(stderr, "error %s\n", error);
+        exit(EXIT_FAILURE);
+    }
+#endif /* SCALLOC */
+
 }
 
 static void load_glib() {

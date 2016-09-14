@@ -73,7 +73,15 @@ TARGET_MALLOC = $(tm)
 ifeq ($(TARGET_MALLOC),ltalloc)
   SHARED_LIBS_SOURCE = $(ROCKET_SIM_PATCH_PATH)/src/ltalloc.cpp
   SHARED_LIBS =  $(patsubst %.cpp, %.so, $(SHARED_LIBS_SOURCE))
-  CXXFLAGS += -DLTALLOC  
+  CXXFLAGS += -DLTALLOC
+  LDFLAGS = -ldl
+  CXXFLAGS_SHARELIB = -fPIC \
+  		      -shared
+else ifeq ($(TARGET_MALLOC),scalloc)
+  SHARED_LIBS_SOURCE = 
+  SHARED_LIBS = $(ROCKET_SIM_PATCH_PATH)/src/scalloc-1.0.0/out/Release/libscalloc.dylib
+  CXXFLAGS += -DSCALLOC
+  LDFLAGS = -ldl
 else
 #Default is use glibc
   SHARED_LIBS_SOURCE =
@@ -88,12 +96,12 @@ deps := $(OBJECTS:%.o=%.o.d)
 	$(CXX) $(CXXFLAGS) -o $@ -MMD -MF $@.d -c $<
 %.o: %.c
 	$(CC) -c $< -o $@ $(CFLAGS) $(CLIBS)
-
+ifneq ($(TARGET_MALLOC),scalloc)
 $(SHARED_LIBS): $(SHARED_LIBS_SOURCE)
-	$(CXX) $(CXXFLAGS) -fPIC -shared -o $@ $^
-
+	$(CXX) $(CXXFLAGS) $(CXXFLAGS_SHARELIB) -o $@ $^
+endif
 $(PROJECT): $(OBJECTS) $(SHARED_LIBS) 
-	$(CXX) -o $@ $(OBJECTS) $(SHARED_LIBS) $(LDFLAGS) -ldl -pthread
+	$(CXX) -o $@ $(OBJECTS) $(SHARED_LIBS) $(LDFLAGS) -pthread
 
 run: $(PROJECT)
 	./$(PROJECT)
@@ -109,3 +117,5 @@ distclean: clean
 debug :
 	@echo $(ROCKET_SIM_PATCH_PATH)
 -include $(deps)
+
+.PHONY: scalloc

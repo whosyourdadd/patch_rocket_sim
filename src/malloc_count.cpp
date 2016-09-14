@@ -362,26 +362,31 @@ static void load_dynamic_lib() {
 #endif /* LTALLOC */
 
 #ifdef SCALLOC  
-    puts("Use SCALLOC dynamic library! (mac)");  
     char *error;
+#if __MACH__
+    puts("Use SCALLOC dynamic library! (mac)");  
     void *handle = dlopen("./patch_rocket_sim/src/scalloc-1.0.0/out/Release/libscalloc.dylib", 
                             RTLD_LAZY);
+#else
+    puts("Use SCALLOC dynamic library! (Linux)");  
+    
+#endif /* __MACH__ */
     if ((error = dlerror()) != NULL) {
         fprintf(stderr, "error %s\n", error);
         exit(EXIT_FAILURE);
     }
-    real_malloc = (malloc_type)dlsym(handle, "_scalloc_malloc");
+    real_malloc = (malloc_type)dlsym(handle, "scalloc_malloc");
     if ((error = dlerror()) != NULL) {
         fprintf(stderr, "error %s\n", error);
         exit(EXIT_FAILURE);
     }
-    real_realloc = (realloc_type)dlsym(handle, "_scalloc_realloc");
+    real_realloc = (realloc_type)dlsym(handle, "scalloc_realloc");
     if ((error = dlerror()) != NULL) {
         fprintf(stderr, "error %s\n", error);
         exit(EXIT_FAILURE);
     }
 
-    real_free = (free_type)dlsym(handle, "_scalloc_free");
+    real_free = (free_type)dlsym(handle, "scalloc_free");
     if ((error = dlerror()) != NULL) {
         fprintf(stderr, "error %s\n", error);
         exit(EXIT_FAILURE);
@@ -389,7 +394,7 @@ static void load_dynamic_lib() {
 #endif /* SCALLOC */
 
 }
-
+#ifdef GLIBC
 static void load_glib() {
     puts("Use glibc!");
     
@@ -412,6 +417,7 @@ static void load_glib() {
         exit(EXIT_FAILURE);
     }
 }
+#endif /* GLIBC */
 
 void *reader_thread(void *arg)
 {
@@ -425,10 +431,10 @@ void *reader_thread(void *arg)
 
 static __attribute__((constructor)) void init(void)
 {
-#ifdef LTALLOC     
-    load_dynamic_lib();
-#else
+#ifdef GLIBC     
     load_glib();
+#else
+    load_dynamic_lib();
 #endif
     rb_init(&rb_buffer);
     pthread_create(&reader_thread_id, NULL, reader_thread, NULL);

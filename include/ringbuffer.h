@@ -14,7 +14,7 @@
 extern "C" { /* for inclusion from C++ */
 #endif
 
-#define NUM_OF_CELL                     (0x40000000) //must power of 2
+#define NUM_OF_CELL                     (0x1000000) //must power of 2
 #define RB_CELL_IDX(idx)      ((idx) & (NUM_OF_CELL - 1)) //mod NUM_OF_CELL
 #define FILE_NAME                       "heap.log"
 #define BILLION 1000000000L

@@ -14,7 +14,7 @@ User Guide
 
 ## Note 
 ### Run simulation faster
-- If you have enough memory, you can modify ** #define NUM_OF_CELL** number in ringbuffer.h for more lager memory
+- If you have enough memory, you can modify ** #define NUM_OF_CELL** number in ringbuffer.h for more lager memory.  
 ### Scalloc User
 - Execute **./patch_rocket_sim/scalloc_config.sh** under the **rocket-sim/** before build the code.
 - **make tm=scalloc**

@@ -367,7 +367,9 @@ static void load_dynamic_lib() {
     puts("Use SCALLOC dynamic library! (mac)");  
     void *handle = dlopen("./patch_rocket_sim/src/scalloc-1.0.0/out/Release/libscalloc.dylib", 
                             RTLD_LAZY);
-#else
+#else /* Linux */
+    void *handle = dlopen("./patch_rocket_sim/src/scalloc-1.0.0/out/Release/lib.target/libscalloc.so", 
+                            RTLD_LAZY);
     puts("Use SCALLOC dynamic library! (Linux)");  
     
 #endif /* __MACH__ */

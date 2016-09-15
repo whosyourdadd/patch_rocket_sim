@@ -81,8 +81,10 @@ else ifeq ($(TARGET_MALLOC),scalloc)
   SHARED_LIBS_SOURCE = 
   ifeq ($(OS_TYPE), Darwin)
   	SHARED_LIBS = $(ROCKET_SIM_PATCH_PATH)/src/scalloc-1.0.0/out/Release/libscalloc.dylib
-  else 
-  	SHARED_LIBS = 
+  else ifeq ($(OS_TYPE), Linux)
+  	SHARED_LIBS = $(ROCKET_SIM_PATCH_PATH)/src/scalloc-1.0.0/out/Release/lib.target/libscalloc.so
+  else
+       @echo "Not syupport"
   endif
   CXXFLAGS += -DSCALLOC
 else
@@ -90,6 +92,13 @@ else
   SHARED_LIBS_SOURCE =
   SHARED_LIBS =
   CXXFLAGS += -DGLIBC
+endif
+
+ifeq ($(OS_TYPE), Linux)
+ CXX_LINUX_PLATFORM_FLAGS = -ldl \
+                            -pthread
+else
+  CXX_LINUX_PLATFORM_FLAGS =
 endif
 
 all: $(PROJECT)
@@ -104,8 +113,8 @@ ifneq ($(TARGET_MALLOC),scalloc)
 $(SHARED_LIBS): $(SHARED_LIBS_SOURCE)
 	$(CXX) $(CXXFLAGS) $(CXXFLAGS_SHARELIB) -o $@ $^
 endif
-$(PROJECT): $(OBJECTS) $(SHARED_LIBS) 
-	$(CXX) -o $@ $(OBJECTS)
+$(PROJECT): $(OBJECTS) $(SHARED_LIBS)
+	$(CXX) -o $@ $(OBJECTS) $(CXX_LINUX_PLATFORM_FLAGS)
 
 run: $(PROJECT)
 	./$(PROJECT)

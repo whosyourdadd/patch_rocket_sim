@@ -34,6 +34,7 @@
 #ifdef __cplusplus
 extern "C" { /* for inclusion from C++ */
 #endif
+ 
 /* returns the currently allocated amount of memory */
 extern size_t malloc_count_current(void);
 

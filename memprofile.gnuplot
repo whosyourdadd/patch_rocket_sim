@@ -1,17 +1,50 @@
 #!/usr/bin/env gnuplot
 
+set output "curr_size.jpg"
+
+set key top right
+set grid xtics ytics
+
+set title 'Memory Profile of Test Program'
+set xlabel 'Time [s]'
+set ylabel 'alloc size [kb]'
 set datafile separator ","
-#set autoscale fix
-set key outside right center
-#set key inside left top vertical Right noreverse enhanced autotitle box lt black linewidth 1.000 dashtype solid
-set term png size 800,600 #font "arial,12" #transparent nocrop enhanced size 800,600 font "arial,12"  background rgb 'white'
-set output "memprofile.png"
-#set samples 50, 50
-set title "Memory Profile of Test Program" 
-set title  font ",20" norotate
-#set grid xtics ytics
-set xlabel 'Timestamp [sec]'
-set ylabel 'Memory Usage [Byte]'
-#plot the first 1000~5000 row data
-plot "<(sed -n '5000,5030p' heap_log.csv)" using 1:2   title "current" with lines ,\
-#     "<(sed -n '5000,10000p' sorted_log.csv)" using 1:3   title "Peak" with lines
+set logscale x
+plot \
+         "glibc_heaplog.csv" using 1:($2/1024)     title "glibc heap" with lines , \
+         "ltalloc_heaplog.csv" using 1:($2/1024)   title "ltalloc heap " with lines,  
+         "tcalloc_heaplog.csv" using 1:($2/1024)   title "tcalloc heap" with lines 
+
+set terminal pdf size 28cm,18cm linewidth 2.0
+set output "frag_size.jpg"
+
+set key top right
+set grid xtics ytics
+
+set title 'Memory Profile of Test Program'
+set xlabel 'Time [s]'
+set ylabel 'curr frag percentage [%]'
+set datafile separator ","
+set logscale x
+plot \
+     "glibc_heaplog.csv" using 1:3   title "glibc frag" with lines , \
+     "ltalloc_heaplog.csv" using 1:3   title "ltalloc frag " with lines, \
+     "tcalloc_heaplog.csv" using 1:3   title "tcalloc frag" with lines 
+
+
+
+set terminal pdf size 28cm,18cm linewidth 2.0
+set output "alloc_time.jpg"
+
+set key top right
+set grid xtics ytics
+
+set title 'Memory Profile of Test Program'
+set xlabel 'Time [s]'
+set ylabel 'alloc Time [ms]'
+set datafile separator ","
+set logscale x
+plot \
+     "glibc_heaplog.csv" using 1:4   title "glibc alloc time" with lines ,\
+     "ltalloc_heaplog.csv" using 1:4   title "ltalloc alloc time " with lines , \
+     "tcalloc_heaplog.csv" using 1:4   title "tcalloc alloc time" with lines 

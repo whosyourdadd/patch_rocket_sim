@@ -1039,3 +1039,13 @@ void *ltrealloc(void *ptr, size_t sz)
 
     return nptr;
 }
+
+size_t get_actual_info(void *p) 
+{
+    if (likely((uintptr_t)p & (CHUNK_SIZE-1))) {
+        size_t sizeClass = ((Chunk *)((uintptr_t) p & ~(CHUNK_SIZE-1)))->sizeClass;
+        return class_to_size(sizeClass);
+    } else {
+        return ptrie_lookup((uintptr_t)p);
+    }
+}

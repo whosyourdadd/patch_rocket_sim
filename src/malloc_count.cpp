@@ -37,6 +37,7 @@
 #include <pthread.h>
 #include "ringbuffer.h"
 
+
 /* user-defined options for output malloc()/free() operations to stderr */
 
 static const int log_operations = 0;    /* <-- set this to 1 for log output */
@@ -160,6 +161,11 @@ void malloc_count_record_stop(void)
 {
      g_record_flag = false;
 }
+
+static double diff_in_second(double t1, double t2)
+{
+    return (t2 - t1);
+}
 /****************************************************/
 /* exported symbols that overlay the libc functions */
 /****************************************************/
@@ -167,12 +173,64 @@ void malloc_count_record_stop(void)
 extern void* malloc(size_t size)
 {
     void* ret;
+#if PROPRIETARY_LOGGING
+    static double last_ts;
+    static double first_ts;
+    static double last_fragper;
+    static bool ts_init_flag = true;
+    double var_count;
+    double fragper;
+#endif /* PROPRIETARY_LOGGING */
+
 
     if (size == 0) return NULL;
     if (real_malloc)
     {
         /* call read malloc procedure in libc */
-#if 1 // Add your record info
+#if PROPRIETARY_LOGGING
+
+        struct ringbuff_cell temp;
+        double next_ts;
+        if(ts_init_flag == true ){
+            ts_init_flag = false;
+            first_ts = get_curr_time();
+            last_ts = first_ts;
+        }
+
+        temp.timestamp = get_curr_time();    
+        ret = (*real_malloc)(alignment + size);  
+        next_ts = get_curr_time();
+
+        /* Record real memory allocate size */
+#ifdef LTALLOC  
+        size_t actual_size = 0;//get_actual_info(ret);
+        fragper = (double)(actual_size - (alignment + size))/(double)(alignment + size);
+        var_count = (fragper > last_fragper)? (fragper - last_fragper) : (last_fragper - fragper);
+#else
+        size_t actual_size = malloc_usable_size(ret);
+        fragper = (double)(actual_size - (alignment + size))/(double)(alignment + size);
+        var_count = (fragper > last_fragper)? (fragper -last_fragper) : (last_fragper - fragper);   
+#endif
+        if(diff_in_second(last_ts, temp.timestamp) > 60 |
+                                         (fragper > 0.3)|
+            (var_count > last_fragper) ? (var_count - last_fragper): (last_fragper - var_count) > 0.2)
+        {
+            last_fragper = var_count;
+            temp.curr_heap_size = curr;
+            if(fragper > 0.3)
+            {
+               printf("fragper : %0.3f,actual_size %d,alignment %d, size %d \n",fragper,actual_size,alignment,size );
+            }
+
+            temp.curr_frag_size = fragper;//(actual_size - (alignment + size))/(alignment + size);
+
+            temp.alloc_time     = diff_in_second(temp.timestamp, next_ts)*1000000;
+            temp.time_interval   = diff_in_second(first_ts, temp.timestamp);
+            last_ts = temp.timestamp;
+
+            rb_put(&rb_buffer,&temp);
+        }
+#else  /* For Unit test*/
         if (g_record_flag)
         {
                 struct ringbuff_cell temp;
@@ -182,7 +240,7 @@ extern void* malloc(size_t size)
                 rb_put(&rb_buffer,&temp);
         }
 
-#endif
+#endif /*PROPRIETARY_LOGGING */
         ret = (*real_malloc)(alignment + size);
         inc_count(size);
         if (log_operations && size >= log_operations_threshold) {

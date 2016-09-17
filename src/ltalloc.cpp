@@ -1039,7 +1039,8 @@ void *ltrealloc(void *ptr, size_t sz)
 
     return nptr;
 }
-
+/* ltalloc.cpp */
+#include "ltalloc.hpp"
 size_t get_actual_info(void *p) 
 {
     if (likely((uintptr_t)p & (CHUNK_SIZE-1))) {

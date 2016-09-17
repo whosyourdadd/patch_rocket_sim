@@ -57,6 +57,11 @@ extern void malloc_count_set_callback(malloc_count_callback_type cb,
 
 /* user function which prints current and peak allocation to stderr */
 extern void malloc_count_print_status(void);
+
+/* Record operation API*/
+void malloc_count_record_start(void);
+void malloc_count_record_stop(void);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

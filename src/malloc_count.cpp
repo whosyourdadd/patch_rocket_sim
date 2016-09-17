@@ -82,6 +82,8 @@ static void* callback_cookie = NULL;
 pthread_t reader_thread_id;
 static struct ringbuffer rb_buffer;
 #define EQUAL(a,b) ((a)==(b))
+static bool g_record_flag = true;
+
 
 /* add allocation to statistics */
 static void inc_count(size_t inc)
@@ -149,6 +151,15 @@ void malloc_count_set_callback(malloc_count_callback_type cb, void* cookie)
     callback_cookie = cookie;
 }
 
+/* Record operation API */
+void malloc_count_record_start(void)
+{
+    g_record_flag = true;
+}
+void malloc_count_record_stop(void)
+{
+     g_record_flag = false;
+}
 /****************************************************/
 /* exported symbols that overlay the libc functions */
 /****************************************************/
@@ -162,11 +173,15 @@ extern void* malloc(size_t size)
     {
         /* call read malloc procedure in libc */
 #if 1 // Add your record info
-        struct ringbuff_cell temp;
-        //clock_get_hw_time(&temp.timestamp);
-        //temp.timestamp = get_curr_time();
-        temp.curr_heap_size = curr;
-        rb_put(&rb_buffer,&temp);
+        if (g_record_flag)
+        {
+                struct ringbuff_cell temp;
+                //clock_get_hw_time(&temp.timestamp);
+                //temp.timestamp = get_curr_time();
+                temp.curr_heap_size = curr;
+                rb_put(&rb_buffer,&temp);
+        }
+
 #endif
         ret = (*real_malloc)(alignment + size);
         inc_count(size);
@@ -439,6 +454,7 @@ static __attribute__((constructor)) void init(void)
     load_dynamic_lib();
 #endif
     rb_init(&rb_buffer);
+    printf("Default record is start !!\n");
     pthread_create(&reader_thread_id, NULL, reader_thread, NULL);
 
     printf("pthread_create() for reader \n");
